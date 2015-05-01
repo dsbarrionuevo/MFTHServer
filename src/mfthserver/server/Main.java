@@ -1,6 +1,4 @@
-package mfthserver;
-
-import java.io.IOException;
+package mfthserver.server;
 
 /**
  *
@@ -8,7 +6,7 @@ import java.io.IOException;
  */
 public class Main {
 
-    public static void main(String[] args) throws IOException {
+    public static void main(String[] args) {
         System.out.println("SERVER");
         Server server = new Server(4646);
         server.start();

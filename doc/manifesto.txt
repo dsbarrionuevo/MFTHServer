@@ -1,0 +1,14 @@
+﻿MFTH:
+Server side:
+1. Crea el mapa a partir del map.json.
+2. Entra en loop escuchando clientes:
+	2.1 Enviar id de cliente.
+	2.2 Ubicarlo en alguna sala que no tenga el tesoro (y que preferentemente no tenga otro jugador).
+	2.3 Ubicarlo en un bloque de la sala.
+	2.4 Enviar habitacion actual para ese cliente.
+	2.5 Entrar en loop de actualizacion para se cliente:
+		2.5.1 Escuchar presion de teclas de movimiento:
+			2.5.1.1 Calcular si es posible una nueva posicion. Si es posible:
+				2.5.1.1.1 Enviar nueva posicion.
+			2.5.1.2 ...
+3. Actualizar logica de juego... (para cada sala que tenga al menos un cliente)
