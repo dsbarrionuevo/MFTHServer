@@ -10,6 +10,7 @@ import mfthserver.map.Map;
 import mfthserver.map.room.Room;
 import mfthserver.map.tiles.Tile;
 import mfthserver.player.Player;
+import system.SystemIO;
 
 /**
  *
@@ -40,6 +41,8 @@ public class ServerClient implements Runnable {
             waitForResponse();
             //2.1 Enviar id de cliente.
             sendIdClient();
+            //enviar json de mapa
+            sendMapData();
             //2.2 Ubicarlo en alguna sala que no tenga el tesoro (y que preferentemente no tenga otro jugador).
             //2.3 Ubicarlo en un bloque de la sala.
             //2.4 Enviar habitacion actual para ese cliente.
@@ -106,8 +109,17 @@ public class ServerClient implements Runnable {
     private void placeInRoom() {
         Room chosenRoom = map.getRoomForPlayer();
         Tile emptyTile = chosenRoom.getEmptyTile();
-        System.out.println("Json to send: "+"{command:'init', id_room:" + chosenRoom.getRoomId() + ", tile: {x: " + emptyTile.getTileX() + ", y: " + emptyTile.getTileY() + "} }");
+        System.out.println("Json to send: " + "{command:'init', id_room:" + chosenRoom.getRoomId() + ", tile: {x: " + emptyTile.getTileX() + ", y: " + emptyTile.getTileY() + "} }");
         sendJson("{command:'init', id_room:" + chosenRoom.getRoomId() + ", tile: {x: " + emptyTile.getTileX() + ", y: " + emptyTile.getTileY() + "} }");
+    }
+
+    private void sendMapData() {
+        try {
+            String mapData = SystemIO.readFile(map.getMapSource());
+            sendJson("{command:'map_source',mapData: " + mapData + "}");
+        } catch (IOException ex) {
+            Logger.getLogger(ServerClient.class.getName()).log(Level.SEVERE, null, ex);
+        }
     }
 
 }

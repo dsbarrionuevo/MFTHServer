@@ -44,6 +44,7 @@ public class ImprovedFileRoomBuildingStrategy extends RoomBuildingStrategy {
                         map[i][j] = new DoorTile(j, i, tileWidth, tileHeight);
                     }
                     /*
+                    //not for server
                     try {
                         Image image = new Image("res/images/" + tileFile.getResourcePath());
                         map[i][j].setImage(image);

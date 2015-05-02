@@ -46,7 +46,7 @@ public class Server {
     }
 
     private void createMap() {
-        map = new Map();
+        map = new Map("res/maps/map1.txt");
     }
 
 }

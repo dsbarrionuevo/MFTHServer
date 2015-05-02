@@ -8,9 +8,7 @@ import mfthserver.map.Map;
 import mfthserver.map.room.buildingstrategies.RoomBuildingStrategy;
 import mfthserver.map.tiles.DoorTile;
 import mfthserver.map.tiles.Tile;
-import mfthserver.player.Player;
 import org.newdawn.slick.GameContainer;
-import org.newdawn.slick.Graphics;
 import org.newdawn.slick.SlickException;
 import org.newdawn.slick.geom.Vector2f;
 
@@ -315,7 +313,7 @@ public class Room {
 
     public boolean hitTheDoor(Placeable placeable) {
         if (isFullInsideTile(placeable) && getFullCurrentTile(placeable).getType() == Tile.DOOR_TILE) {
-            map.nextRoom(this, (DoorTile) getCurrentTile(placeable), placeable);
+//            map.nextRoom(this, (DoorTile) getCurrentTile(placeable), placeable);
             this.moveToPosition(new Vector2f(0, 0));
             return true;
         }

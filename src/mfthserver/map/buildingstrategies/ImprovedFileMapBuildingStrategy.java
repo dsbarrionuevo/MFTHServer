@@ -28,7 +28,7 @@ public class ImprovedFileMapBuildingStrategy extends MapBuildingStrategy {
     public void build(Map map) {
         this.rooms = new ArrayList<>();
         MapReader mapReader = new MapReader();
-        MapFile mapFile = mapReader.buildMapFormFile(pathFile);
+        MapFile mapFile = mapReader.buildMapFromFile(pathFile);
         //creating the rooms
         int[][] mainMap = mapFile.getMap();
         for (int i = 0; i < mainMap.length; i++) {
@@ -41,15 +41,17 @@ public class ImprovedFileMapBuildingStrategy extends MapBuildingStrategy {
                     newRoom.setMap(map);
                     rooms.add(newRoom);
                     //for now, when 1 is the id of room, I say its the first room
-                    if (roomFile.getId() == 1) {
+                    //not util for the server, for now
+                    /*if (roomFile.getId() == 1) {
                         this.firstRoom = newRoom;
-                    }
+                    }*/
                 }
             }
         }
+        /*
         if (this.firstRoom == null) {
             this.firstRoom = rooms.get(0);
-        }
+        }*/
         //connecting rooms
         //this only works if the rooms are neighboors and each one has only one door on his side
         for (int i = 0; i < mainMap.length; i++) {
