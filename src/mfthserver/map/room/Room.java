@@ -425,4 +425,31 @@ public class Room {
         return null;
     }
 
+    public String getJsonString() {
+        String source = "";
+        source = "{";
+        source += "'id_room':" + this.roomId;
+        source += ",";
+        source += "'room_type':" + "1";
+        source += ",";
+        source += "'map':";
+        source += "[";
+        for (int i = 0; i < room.length; i++) {
+            source += "[";
+            for (int j = 0; j < room[0].length; j++) {
+                source += room[i][j].getType();
+                if (j != room[0].length - 1) {
+                    source += ",";
+                }
+            }
+            source += "]";
+            if (i != room.length - 1) {
+                source += ",";
+            }
+        }
+        source += "]";
+        source += "}";
+        return source;
+    }
+
 }
