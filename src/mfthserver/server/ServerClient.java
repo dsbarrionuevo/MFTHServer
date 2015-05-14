@@ -10,6 +10,7 @@ import mfthserver.map.Map;
 import mfthserver.map.room.Room;
 import mfthserver.map.tiles.Tile;
 import mfthserver.player.Player;
+import org.json.JSONObject;
 import system.SystemIO;
 
 /**
@@ -48,7 +49,15 @@ public class ServerClient implements Runnable {
             placeInRoom();
             //now I have the both channels open: to listen and speak
             while (connected) {
-                //...
+                //game loop
+                String jsonCommandString = input.readUTF();
+                JSONObject jsonCommand = new JSONObject(jsonCommandString);
+                if (jsonCommand.getString("command").equals("move")) {
+                    //set the id for client
+                    int clientId = jsonCommand.getInt("client_id");
+                    int direction = jsonCommand.getInt("direction");
+                    System.out.println("Player (" + clientId + ") is trying to move to direction " + direction);
+                }
             }
         } catch (IOException ex) {
             Logger.getLogger(ServerClient.class.getName()).log(Level.SEVERE, null, ex);
