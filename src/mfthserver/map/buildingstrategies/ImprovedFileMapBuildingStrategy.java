@@ -52,6 +52,7 @@ public class ImprovedFileMapBuildingStrategy extends MapBuildingStrategy {
         if (this.firstRoom == null) {
             this.firstRoom = rooms.get(0);
         }*/
+        this.roomsCount = this.rooms.size();
         //connecting rooms
         //this only works if the rooms are neighboors and each one has only one door on his side
         for (int i = 0; i < mainMap.length; i++) {

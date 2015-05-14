@@ -10,6 +10,7 @@ import mfthserver.map.Map;
 import mfthserver.map.room.Room;
 import mfthserver.map.tiles.Tile;
 import mfthserver.player.Player;
+import mfthserver.server.Server;
 import org.json.JSONObject;
 import system.SystemIO;
 
@@ -20,8 +21,8 @@ import system.SystemIO;
 public class ServerClient implements Runnable {
 
     private Socket socket;
-    private ObjectOutputStream output;
-    private ObjectInputStream input;
+    private ObjectOutputStream outputStream;
+    private ObjectInputStream inputStream;
     private boolean connected;
     //
     private int idClient;
@@ -32,7 +33,7 @@ public class ServerClient implements Runnable {
         this.connected = true;
         this.socket = socket;
         this.idClient = idClient;
-        this.map = null;
+        this.map = Server.getInstance().getMap();
     }
 
     @Override
@@ -46,17 +47,20 @@ public class ServerClient implements Runnable {
             //2.3 Ubicarlo en un bloque de la sala.
             //2.4 Enviar habitacion actual para ese cliente.
             System.out.println("Try to place player " + idClient + " in room...");
-            placeInRoom();
+            setupPlayer();
             //now I have the both channels open: to listen and speak
             while (connected) {
                 //game loop
-                String jsonCommandString = input.readUTF();
+                String jsonCommandString = inputStream.readUTF();
                 JSONObject jsonCommand = new JSONObject(jsonCommandString);
                 if (jsonCommand.getString("command").equals("move")) {
                     //set the id for client
                     int clientId = jsonCommand.getInt("client_id");
                     int direction = jsonCommand.getInt("direction");
                     System.out.println("Player (" + clientId + ") is trying to move to direction " + direction);
+                    boolean canMove = player.move(direction);
+                    //el server debe actualizar la posicion y mandarsela al cliente
+                    sendJson("{command:'response_move', can_move:" + canMove + ", position: {x:" + player.getPosition().x + ", y:" + player.getPosition().y + "}}");
                 }
             }
         } catch (IOException ex) {
@@ -67,26 +71,26 @@ public class ServerClient implements Runnable {
     }
 
     private void introduceMyself() throws IOException {
-        this.output = new ObjectOutputStream(socket.getOutputStream());
+        this.outputStream = new ObjectOutputStream(socket.getOutputStream());
         String greeting = "Hello!, I'm the server. Your id client is: " + idClient;
-        this.output.writeUTF(greeting);
-        this.output.flush();
+        this.outputStream.writeUTF(greeting);
+        this.outputStream.flush();
         System.out.println("Me: " + greeting);
     }
 
     private void waitForResponse() throws IOException {
-        this.input = new ObjectInputStream(socket.getInputStream());
-        String response = input.readUTF();
+        this.inputStream = new ObjectInputStream(socket.getInputStream());
+        String response = inputStream.readUTF();
         System.out.println("Client: " + response);
     }
 
     private void closeSocket() {
         try {
-            if (output != null) {
-                output.close();
+            if (outputStream != null) {
+                outputStream.close();
             }
-            if (input != null) {
-                input.close();
+            if (inputStream != null) {
+                inputStream.close();
             }
             if (socket != null) {
                 socket.close();
@@ -98,28 +102,34 @@ public class ServerClient implements Runnable {
 
     private void sendIdClient() {
         sendJson("{command:'id_client', id_client:" + idClient + "}");
+        player = new Player();
     }
 
     private void sendJson(String json) {
         try {
-            this.output.writeUTF(json);
-            this.output.flush();
+            this.outputStream.writeUTF(json);
+            this.outputStream.flush();
         } catch (IOException ex) {
             Logger.getLogger(ServerClient.class.getName()).log(Level.SEVERE, null, ex);
         }
     }
 
-    public void setMap(Map map) {
-        this.map = map;
-    }
 
-    private void placeInRoom() {
+    private void setupPlayer() {
+        //create player
+        player = new Player();
+        //seek an empty room and select a begining tile for the player
         Room chosenRoom = map.getRoomForPlayer();
         Tile emptyTile = chosenRoom.getEmptyTile();
         String source = chosenRoom.getJsonString();
+        //set x and y positions for player, also give him the room as reference
+        chosenRoom.addObject(player, emptyTile.getTileX(), emptyTile.getTileY());
         String toSend = "{command:'init', id_room:" + chosenRoom.getRoomId() + ", room_source: \"" + source + "\", tile: {x: " + emptyTile.getTileX() + ", y: " + emptyTile.getTileY() + "} }";
-        System.out.println("Json to send: " + toSend);
         sendJson(toSend);
+    }
+
+    public int getIdClient() {
+        return idClient;
     }
 
 }

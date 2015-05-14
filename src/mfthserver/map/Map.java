@@ -11,6 +11,7 @@ import mfthserver.map.room.Room;
  */
 public class Map {
 
+    //should be synchronized
     private ArrayList<Room> rooms;
     private MapBuildingStrategy buildingStrategy;
     //

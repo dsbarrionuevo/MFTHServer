@@ -5,6 +5,14 @@ import java.util.logging.Logger;
 import mfthserver.common.Movable;
 import mfthserver.common.Placeable;
 import mfthserver.map.room.Room;
+import static mfthserver.map.room.Room.CORNER_BOTTOM_LEFT;
+import static mfthserver.map.room.Room.CORNER_BOTTOM_RIGHT;
+import static mfthserver.map.room.Room.CORNER_TOP_LEFT;
+import static mfthserver.map.room.Room.CORNER_TOP_RIGHT;
+import static mfthserver.map.room.Room.DIRECTION_EAST;
+import static mfthserver.map.room.Room.DIRECTION_NORTH;
+import static mfthserver.map.room.Room.DIRECTION_SOUTH;
+import static mfthserver.map.room.Room.DIRECTION_WEST;
 import org.newdawn.slick.Animation;
 import org.newdawn.slick.Color;
 import org.newdawn.slick.GameContainer;
@@ -32,8 +40,6 @@ public class Player extends Movable implements Placeable {
         super(10f, new Vector2f(), new Rectangle(0, 0, 32, 32));
         this.timerHitTheDoor = 0;
         this.timerToHitTheDoor = 1 * 1000;
-        //
-        setupAnimations();
     }
 
     @Override
@@ -50,6 +56,23 @@ public class Player extends Movable implements Placeable {
             }
         }
         this.timerHitTheDoor += delta;
+    }
+
+    public boolean move(int direction) {
+        float moveFactor = 10f / 100f;
+        if (direction == Room.DIRECTION_WEST && room.canMoveTo(this, Room.DIRECTION_WEST) && room.movingInsideCamera(this, moveFactor, Room.DIRECTION_WEST)) {
+            position.x -= moveFactor;
+        }
+        if (direction == Room.DIRECTION_EAST && room.canMoveTo(this, Room.DIRECTION_EAST) && room.movingInsideCamera(this, moveFactor, Room.DIRECTION_EAST)) {
+            position.x += moveFactor;
+        }
+        if (direction == Room.DIRECTION_NORTH && room.canMoveTo(this, Room.DIRECTION_NORTH) && room.movingInsideCamera(this, moveFactor, Room.DIRECTION_NORTH)) {
+            position.y -= moveFactor;
+        }
+        if (direction == Room.DIRECTION_SOUTH && room.canMoveTo(this, Room.DIRECTION_SOUTH) && room.movingInsideCamera(this, moveFactor, Room.DIRECTION_SOUTH)) {
+            position.y += moveFactor;
+        }
+        return room.canMoveTo(this, direction);
     }
 
     private void move(GameContainer container, int delta) {
@@ -94,39 +117,6 @@ public class Player extends Movable implements Placeable {
                 ((Animation) graphic).start();
             }
             ((Animation) graphic).update(delta);
-        }
-    }
-
-    private void setupAnimations() {
-        try {
-            //speed: 10px ==> duration: 340 milis
-            int duration = 340;
-            //animations
-            String model = "model1";
-            this.walkingFront = new Animation(new Image[]{
-                new Image("res/images/players/" + model + "/front0.png"),
-                new Image("res/images/players/" + model + "/front1.png"),
-                new Image("res/images/players/" + model + "/front2.png")
-            }, duration, true);
-            this.walkingBack = new Animation(new Image[]{
-                new Image("res/images/players/" + model + "/back0.png"),
-                new Image("res/images/players/" + model + "/back1.png"),
-                new Image("res/images/players/" + model + "/back2.png")
-            }, duration, true);
-            this.walkingLeft = new Animation(new Image[]{
-                new Image("res/images/players/" + model + "/left0.png"),
-                new Image("res/images/players/" + model + "/left1.png"),
-                new Image("res/images/players/" + model + "/left2.png")
-            }, duration, true);
-            this.walkingRight = new Animation(new Image[]{
-                new Image("res/images/players/" + model + "/right0.png"),
-                new Image("res/images/players/" + model + "/right1.png"),
-                new Image("res/images/players/" + model + "/right2.png")
-            }, duration, true);
-            setGraphic(walkingFront);
-            ((Animation) graphic).stop();
-        } catch (SlickException ex) {
-            Logger.getLogger(Player.class.getName()).log(Level.SEVERE, null, ex);
         }
     }
 
