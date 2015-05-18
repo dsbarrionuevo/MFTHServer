@@ -25,6 +25,8 @@ public class Map {
     }
 
     public Room getRoomForPlayer() {
+        return rooms.get(0);
+        /*
         Room chosenRoom = null;
         do {
             chosenRoom = rooms.get((int) (Math.random() * (rooms.size() - 1)));
@@ -33,6 +35,7 @@ public class Map {
             chosenRoom = rooms.get(0);
         }
         return chosenRoom;
+                */
     }
 
     public String getMapSource() {

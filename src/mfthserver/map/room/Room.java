@@ -8,6 +8,7 @@ import mfthserver.map.Map;
 import mfthserver.map.room.buildingstrategies.RoomBuildingStrategy;
 import mfthserver.map.tiles.DoorTile;
 import mfthserver.map.tiles.Tile;
+import mfthserver.player.Player;
 import org.newdawn.slick.GameContainer;
 import org.newdawn.slick.SlickException;
 import org.newdawn.slick.geom.Vector2f;
@@ -450,6 +451,17 @@ public class Room {
         source += "]";
         source += "}";
         return source;
+    }
+
+    public ArrayList<Player> getPlayers() {
+        ArrayList<Player> players = new ArrayList<>();
+        for (int i = 0; i < objects.size(); i++) {
+            Placeable object = objects.get(i);
+            if(object instanceof Player){
+                players.add((Player)object);
+            }
+        }
+        return players;
     }
 
 }

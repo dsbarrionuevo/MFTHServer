@@ -9,6 +9,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import mfthserver.ServerClient;
 import mfthserver.map.Map;
+import mfthserver.player.Player;
 
 /**
  *
@@ -75,6 +76,16 @@ public class Server {
             }
         }
         return null;
+    }
+
+    public void sendPlayerInfo(int clientId, Player player) {
+        Iterator<ServerClient> iterator = clients.iterator();
+        while (iterator.hasNext()) {
+            ServerClient current = iterator.next();
+            if (current.getIdClient() != clientId && current.getPlayer().getRoom().equals(player.getRoom())) {
+                current.sendPlayerInfo(clientId, player);
+            }
+        }
     }
 
 }

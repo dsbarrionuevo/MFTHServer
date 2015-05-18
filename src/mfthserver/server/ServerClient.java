@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
+import java.util.ArrayList;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import mfthserver.map.Map;
@@ -12,7 +13,6 @@ import mfthserver.map.tiles.Tile;
 import mfthserver.player.Player;
 import mfthserver.server.Server;
 import org.json.JSONObject;
-import system.SystemIO;
 
 /**
  *
@@ -25,14 +25,14 @@ public class ServerClient implements Runnable {
     private ObjectInputStream inputStream;
     private boolean connected;
     //
-    private int idClient;
+    private int clientId;
     private Player player;
     private Map map;
 
     public ServerClient(Socket socket, int idClient) {
         this.connected = true;
         this.socket = socket;
-        this.idClient = idClient;
+        this.clientId = idClient;
         this.map = Server.getInstance().getMap();
     }
 
@@ -46,8 +46,10 @@ public class ServerClient implements Runnable {
             //2.2 Ubicarlo en alguna sala que no tenga el tesoro (y que preferentemente no tenga otro jugador).
             //2.3 Ubicarlo en un bloque de la sala.
             //2.4 Enviar habitacion actual para ese cliente.
-            System.out.println("Try to place player " + idClient + " in room...");
+            System.out.println("Try to place player " + clientId + " in room...");
             setupPlayer();
+            //send player data to all of the other players
+            Server.getInstance().sendPlayerInfo(clientId, player);
             //now I have the both channels open: to listen and speak
             while (connected) {
                 //game loop
@@ -72,7 +74,7 @@ public class ServerClient implements Runnable {
 
     private void introduceMyself() throws IOException {
         this.outputStream = new ObjectOutputStream(socket.getOutputStream());
-        String greeting = "Hello!, I'm the server. Your id client is: " + idClient;
+        String greeting = "Hello!, I'm the server. Your id client is: " + clientId;
         this.outputStream.writeUTF(greeting);
         this.outputStream.flush();
         System.out.println("Me: " + greeting);
@@ -101,7 +103,7 @@ public class ServerClient implements Runnable {
     }
 
     private void sendIdClient() {
-        sendJson("{command:'id_client', id_client:" + idClient + "}");
+        sendJson("{command:'id_client', id_client:" + clientId + "}");
         player = new Player();
     }
 
@@ -114,7 +116,6 @@ public class ServerClient implements Runnable {
         }
     }
 
-
     private void setupPlayer() {
         //create player
         player = new Player();
@@ -122,14 +123,38 @@ public class ServerClient implements Runnable {
         Room chosenRoom = map.getRoomForPlayer();
         Tile emptyTile = chosenRoom.getEmptyTile();
         String source = chosenRoom.getJsonString();
+        //others in the room
+        ArrayList<Player> others = chosenRoom.getPlayers();
+        String playersString = "[";
+        for (int i = 0; i < others.size(); i++) {
+            Player otherPlayer = others.get(i);
+            playersString += "{id:-1, position:{x:" + otherPlayer.getPosition().x + ",y:" + otherPlayer.getPosition().y + "}}";
+            if (i != others.size() - 1) {
+                playersString += ",";
+            }
+        }
+        playersString += "]";
         //set x and y positions for player, also give him the room as reference
         chosenRoom.addObject(player, emptyTile.getTileX(), emptyTile.getTileY());
-        String toSend = "{command:'init', id_room:" + chosenRoom.getRoomId() + ", room_source: \"" + source + "\", tile: {x: " + emptyTile.getTileX() + ", y: " + emptyTile.getTileY() + "} }";
+        String toSend = "{command:'init', "
+                + "id_room:" + chosenRoom.getRoomId() + ", "
+                + "room_source: \"" + source + "\", tile: {x: " + emptyTile.getTileX() + ", y: " + emptyTile.getTileY() + "},"
+                + "room_players:" + playersString + " }";
         sendJson(toSend);
+
     }
 
     public int getIdClient() {
-        return idClient;
+        return clientId;
+    }
+
+    public void sendPlayerInfo(int clientId, Player player) {
+        Tile tile = player.getRoom().getCurrentTile(player);
+        sendJson("{command:'new_player',client_id:" + clientId + ",tile: {x:'+" + tile.getTileX() + "',y:'+" + tile.getTileY() + "'}, room_id: " + player.getRoom().getRoomId() + "}");
+    }
+
+    public Player getPlayer() {
+        return player;
     }
 
 }

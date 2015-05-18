@@ -59,7 +59,7 @@ public class Player extends Movable implements Placeable {
     }
 
     public boolean move(int direction) {
-        float moveFactor = 10f / 100f;
+        float moveFactor = 15f / 100f;
         if (direction == Room.DIRECTION_WEST && room.canMoveTo(this, Room.DIRECTION_WEST) && room.movingInsideCamera(this, moveFactor, Room.DIRECTION_WEST)) {
             position.x -= moveFactor;
         }
