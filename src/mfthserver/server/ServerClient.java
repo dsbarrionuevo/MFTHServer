@@ -76,7 +76,7 @@ public class ServerClient implements Runnable {
                         roomWherePlayerStayed.removeObject(roomWherePlayerStayed.getPlayerById(clientId));
                     }
                     //esto es para que le borre de la sala de los otros jugadores, el jugador que se acaba de desconectar
-                    //Server.getInstance().sendJsonToAll("{command:'player_disconnected', client_id: "+clientId+"}");
+                    Server.getInstance().sendJsonToAll("{command:'player_disconnected', client_id: "+clientId+", room_id: "+roomId+"}", clientId);
                     disconnect();
                 }
             }

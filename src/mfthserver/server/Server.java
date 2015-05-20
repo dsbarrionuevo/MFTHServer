@@ -93,11 +93,30 @@ public class Server {
 
     public void sendJsonToAll(String json) {
         //tamb se lo manda al que envio
-        Iterator<ServerClient> iterator = clients.iterator();
-        while (iterator.hasNext()) {
-            ServerClient current = iterator.next();
-            current.sendJson(json);
+        for (int i = 0; i < clients.size(); i++) {
+            clients.get(i).sendJson(json);
         }
+        /*
+         Iterator<ServerClient> iterator = clients.iterator();
+         while (iterator.hasNext()) {
+         ServerClient current = iterator.next();
+         current.sendJson(json);
+         }*/
+    }
+
+    public void sendJsonToAll(String json, int except) {
+        //tamb se lo manda al que envio
+        for (int i = 0; i < clients.size(); i++) {
+            if (clients.get(i).getIdClient() != except) {
+                clients.get(i).sendJson(json);
+            }
+        }
+        /*
+         Iterator<ServerClient> iterator = clients.iterator();
+         while (iterator.hasNext()) {
+         ServerClient current = iterator.next();
+         current.sendJson(json);
+         }*/
     }
 
     public void removeClient(int clientId) {
