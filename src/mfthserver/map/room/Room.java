@@ -457,11 +457,22 @@ public class Room {
         ArrayList<Player> players = new ArrayList<>();
         for (int i = 0; i < objects.size(); i++) {
             Placeable object = objects.get(i);
-            if(object instanceof Player){
-                players.add((Player)object);
+            if (object instanceof Player) {
+                players.add((Player) object);
             }
         }
         return players;
     }
 
+    public Player getPlayerById(int id) {
+        for (int i = 0; i < objects.size(); i++) {
+            Placeable object = objects.get(i);
+            if (object instanceof Player) {
+                if (((Player) object).getId() == id) {
+                    return (Player) object;
+                }
+            }
+        }
+        return null;
+    }
 }

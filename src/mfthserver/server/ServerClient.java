@@ -62,7 +62,22 @@ public class ServerClient implements Runnable {
                     System.out.println("Player (" + clientId + ") is trying to move to direction " + direction);
                     boolean canMove = player.move(direction);
                     //el server debe actualizar la posicion y mandarsela al cliente
-                    sendJson("{command:'response_move', can_move:" + canMove + ", position: {x:" + player.getPosition().x + ", y:" + player.getPosition().y + "}}");
+                    //sendJson("{command:'response_move', client_id: "+player.getId()+", can_move:" + canMove + ", position: {x:" + player.getPosition().x + ", y:" + player.getPosition().y + "}}");
+
+                    //ahora, el server le tiene que mandar a todos el movimiento que ocurrio en la sala de este jugador
+                    //considerar si se debe mandar al que envio tamb...
+                    Server.getInstance().sendJsonToAll("{command:'response_move', client_id: " + player.getId() + ", can_move:" + canMove + ", position: {x:" + player.getPosition().x + ", y:" + player.getPosition().y + "}}");
+                } else if (jsonCommand.getString("command").equals("disconnect")) {
+                    //"{command: 'disconnect', client_id: "+clientId+", room_id: "+room.getRoomId()+"}"
+                    int roomId = jsonCommand.getInt("room_id");
+                    int clientId = jsonCommand.getInt("client_id");//clientId;//... also works
+                    Room roomWherePlayerStayed = map.findRoomById(roomId);
+                    if (roomWherePlayerStayed != null) {
+                        roomWherePlayerStayed.removeObject(roomWherePlayerStayed.getPlayerById(clientId));
+                    }
+                    //esto es para que le borre de la sala de los otros jugadores, el jugador que se acaba de desconectar
+                    //Server.getInstance().sendJsonToAll("{command:'player_disconnected', client_id: "+clientId+"}");
+                    disconnect();
                 }
             }
         } catch (IOException ex) {
@@ -104,10 +119,10 @@ public class ServerClient implements Runnable {
 
     private void sendIdClient() {
         sendJson("{command:'id_client', id_client:" + clientId + "}");
-        player = new Player();
+        player = new Player(clientId);
     }
 
-    private void sendJson(String json) {
+    public void sendJson(String json) {
         try {
             this.outputStream.writeUTF(json);
             this.outputStream.flush();
@@ -118,7 +133,7 @@ public class ServerClient implements Runnable {
 
     private void setupPlayer() {
         //create player
-        player = new Player();
+        player = new Player(clientId);
         //seek an empty room and select a begining tile for the player
         Room chosenRoom = map.getRoomForPlayer();
         Tile emptyTile = chosenRoom.getEmptyTile();
@@ -128,7 +143,7 @@ public class ServerClient implements Runnable {
         String playersString = "[";
         for (int i = 0; i < others.size(); i++) {
             Player otherPlayer = others.get(i);
-            playersString += "{id:-1, position:{x:" + otherPlayer.getPosition().x + ",y:" + otherPlayer.getPosition().y + "}}";
+            playersString += "{id: " + otherPlayer.getId() + ", position:{x:" + otherPlayer.getPosition().x + ",y:" + otherPlayer.getPosition().y + "}}";
             if (i != others.size() - 1) {
                 playersString += ",";
             }
@@ -155,6 +170,12 @@ public class ServerClient implements Runnable {
 
     public Player getPlayer() {
         return player;
+    }
+
+    private void disconnect() {
+        connected = false;
+        closeSocket();
+        Server.getInstance().removeClient(clientId);
     }
 
 }

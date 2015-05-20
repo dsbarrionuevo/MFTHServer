@@ -1,25 +1,11 @@
 package mfthserver.player;
 
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import mfthserver.common.Movable;
 import mfthserver.common.Placeable;
 import mfthserver.map.room.Room;
-import static mfthserver.map.room.Room.CORNER_BOTTOM_LEFT;
-import static mfthserver.map.room.Room.CORNER_BOTTOM_RIGHT;
-import static mfthserver.map.room.Room.CORNER_TOP_LEFT;
-import static mfthserver.map.room.Room.CORNER_TOP_RIGHT;
-import static mfthserver.map.room.Room.DIRECTION_EAST;
-import static mfthserver.map.room.Room.DIRECTION_NORTH;
-import static mfthserver.map.room.Room.DIRECTION_SOUTH;
-import static mfthserver.map.room.Room.DIRECTION_WEST;
 import org.newdawn.slick.Animation;
-import org.newdawn.slick.Color;
 import org.newdawn.slick.GameContainer;
-import org.newdawn.slick.Graphics;
-import org.newdawn.slick.Image;
 import org.newdawn.slick.Input;
-import org.newdawn.slick.SlickException;
 import org.newdawn.slick.geom.Rectangle;
 import org.newdawn.slick.geom.Vector2f;
 
@@ -29,17 +15,24 @@ import org.newdawn.slick.geom.Vector2f;
  */
 public class Player extends Movable implements Placeable {
 
+    private static final int INVALID_ID = -1;
     private Room room;
+    private int id;
     //
     private long timerHitTheDoor;
     private long timerToHitTheDoor;
     //
     private Animation walkingFront, walkingBack, walkingLeft, walkingRight;
 
-    public Player() {
+    public Player(int id) {
         super(10f, new Vector2f(), new Rectangle(0, 0, 32, 32));
+        this.id = id;
         this.timerHitTheDoor = 0;
         this.timerToHitTheDoor = 1 * 1000;
+    }
+
+    public Player() {
+        this(INVALID_ID);
     }
 
     @Override
@@ -149,4 +142,16 @@ public class Player extends Movable implements Placeable {
         return this.room;
     }
 
+    public int getId() {
+        return id;
+    }
+
+    public void setId(int id) {
+        this.id = id;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        return ((Player) obj).getId() == getId();
+    }
 }

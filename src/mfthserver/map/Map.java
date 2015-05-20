@@ -27,19 +27,29 @@ public class Map {
     public Room getRoomForPlayer() {
         return rooms.get(0);
         /*
-        Room chosenRoom = null;
-        do {
-            chosenRoom = rooms.get((int) (Math.random() * (rooms.size() - 1)));
-        } while (!chosenRoom.hasTreasure());
-        if (chosenRoom == null) {
-            chosenRoom = rooms.get(0);
-        }
-        return chosenRoom;
-                */
+         Room chosenRoom = null;
+         do {
+         chosenRoom = rooms.get((int) (Math.random() * (rooms.size() - 1)));
+         } while (!chosenRoom.hasTreasure());
+         if (chosenRoom == null) {
+         chosenRoom = rooms.get(0);
+         }
+         return chosenRoom;
+         */
     }
 
     public String getMapSource() {
         return mapSource;
+    }
+
+    public Room findRoomById(int roomId) {
+        for (int i = 0; i < rooms.size(); i++) {
+            Room room = rooms.get(i);
+            if (room.getRoomId() == roomId) {
+                return room;
+            }
+        }
+        return null;
     }
 
 }
