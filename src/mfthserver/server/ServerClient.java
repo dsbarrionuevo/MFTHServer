@@ -1,181 +1,143 @@
-package mfthserver;
+package mfthserver.server;
 
+import mfthserver.server.commands.*;
 import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
 import java.net.Socket;
 import java.util.ArrayList;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import mfthserver.map.Map;
 import mfthserver.map.room.Room;
 import mfthserver.map.tiles.Tile;
 import mfthserver.player.Player;
-import mfthserver.server.Server;
-import org.json.JSONObject;
+import static mfthserver.server.commands.CommandFactory.*;
+import mfthserver.server.commands.CommandNewPlayer;
 
 /**
  *
  * @author Barrionuevo Diego
  */
-public class ServerClient implements Runnable {
+public class ServerClient {
 
-    private Socket socket;
-    private ObjectOutputStream outputStream;
-    private ObjectInputStream inputStream;
+    private SocketController socketController;
+    private DatagramController datagramController;
     private boolean connected;
     //
-    private int clientId;
     private Player player;
-    private Map map;
 
-    public ServerClient(Socket socket, int idClient) {
+    public ServerClient(Socket socket, int clientId) {
+        this.socketController = new SocketController(socket);
+        //this.datagramController = new DatagramController(null, null, idClient);
         this.connected = true;
-        this.socket = socket;
-        this.clientId = idClient;
-        this.map = Server.getInstance().getMap();
+        this.player = new Player(clientId);
     }
 
-    @Override
-    public void run() {
-        try {
-            introduceMyself();
-            waitForResponse();
-            //2.1 Enviar id de cliente.
-            sendIdClient();
-            //2.2 Ubicarlo en alguna sala que no tenga el tesoro (y que preferentemente no tenga otro jugador).
-            //2.3 Ubicarlo en un bloque de la sala.
-            //2.4 Enviar habitacion actual para ese cliente.
-            System.out.println("Try to place player " + clientId + " in room...");
-            setupPlayer();
-            //send player data to all of the other players
-            Server.getInstance().sendPlayerInfo(clientId, player);
-            //now I have the both channels open: to listen and speak
-            while (connected) {
-                //game loop
-                String jsonCommandString = inputStream.readUTF();
-                JSONObject jsonCommand = new JSONObject(jsonCommandString);
-                if (jsonCommand.getString("command").equals("move")) {
-                    //set the id for client
-                    int clientId = jsonCommand.getInt("client_id");
-                    int direction = jsonCommand.getInt("direction");
-                    System.out.println("Player (" + clientId + ") is trying to move to direction " + direction);
-                    boolean canMove = player.move(direction);
-                    //el server debe actualizar la posicion y mandarsela al cliente
-                    //sendJson("{command:'response_move', client_id: "+player.getId()+", can_move:" + canMove + ", position: {x:" + player.getPosition().x + ", y:" + player.getPosition().y + "}}");
-
-                    //ahora, el server le tiene que mandar a todos el movimiento que ocurrio en la sala de este jugador
-                    //considerar si se debe mandar al que envio tamb...
-                    Server.getInstance().sendJsonToAll("{command:'response_move', client_id: " + player.getId() + ", can_move:" + canMove + ", position: {x:" + player.getPosition().x + ", y:" + player.getPosition().y + "}}");
-                } else if (jsonCommand.getString("command").equals("disconnect")) {
-                    //"{command: 'disconnect', client_id: "+clientId+", room_id: "+room.getRoomId()+"}"
-                    int roomId = jsonCommand.getInt("room_id");
-                    int clientId = jsonCommand.getInt("client_id");//clientId;//... also works
-                    Room roomWherePlayerStayed = map.findRoomById(roomId);
-                    if (roomWherePlayerStayed != null) {
-                        roomWherePlayerStayed.removeObject(roomWherePlayerStayed.getPlayerById(clientId));
+    public void start() {
+        //TCP listen thread
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    //handshake for tcp
+                    socketController.handshake();
+                    //send id client/player
+                    //2.1 Enviar id de cliente.
+                    sendIdClient();
+                    //place player on a random room and send info about that room (his position, players, enemies)
+                    //2.2 Ubicarlo en alguna sala que no tenga el tesoro (y que preferentemente no tenga otro jugador).
+                    //2.3 Ubicarlo en un bloque de la sala.
+                    //2.4 Enviar habitacion actual para ese cliente.
+                    setupPlayer();
+                    //send player data to all of the other players
+                    Server.getInstance().sendPlayerInfo(player);
+                    while (connected) {
+                        Command command = socketController.receive();
+                        switch (command.getType()) {
+                            case (COMMAND_MOVE):
+                                boolean canMove = player.move(((CommandMove) command).getDirection());
+                                //el server debe actualizar la posicion y mandarsela al cliente
+                                send(new CommandMoveResponse(getId(), canMove, player.getPosition()));
+                                //ahora, el server le tiene que mandar a todos el movimiento que ocurrio en la sala de este jugador
+                                //considerar si se debe mandar al que envio tamb...
+                                //Server.getInstance().sendJsonToAll("{command:'response_move', client_id: " + player.getId() + ", can_move:" + canMove + ", position: {x:" + player.getPosition().x + ", y:" + player.getPosition().y + "}}");
+                                Server.getInstance().sendToAllExceptMe(new CommandMoveResponse(getId(), canMove, player.getPosition()), getMe());
+                                break;
+                            case (COMMAND_DISCONNECT):
+                                CommandDisconnect disconnectCommand = (CommandDisconnect) command;
+                                //"{command: 'disconnect', client_id: "+clientId+", room_id: "+room.getRoomId()+"}"
+                                Room roomWherePlayerStayed = Server.getInstance().getMap().findRoomById(disconnectCommand.getRoomId());
+                                if (roomWherePlayerStayed != null) {
+                                    roomWherePlayerStayed.removeObject(roomWherePlayerStayed.getPlayerById(disconnectCommand.getClientId()));
+                                }
+                                //esto es para que le borre de la sala de los otros jugadores, el jugador que se acaba de desconectar
+                                //Server.getInstance().sendJsonToAll("{command:'player_disconnected', client_id: " + clientId + ", room_id: " + roomId + "}", clientId);
+                                Server.getInstance().sendToAll(new CommandDisconnectResponse(disconnectCommand.getClientId(), disconnectCommand.getRoomId()));
+                                disconnect();
+                                break;
+                        }
                     }
-                    //esto es para que le borre de la sala de los otros jugadores, el jugador que se acaba de desconectar
-                    Server.getInstance().sendJsonToAll("{command:'player_disconnected', client_id: "+clientId+", room_id: "+roomId+"}", clientId);
-                    disconnect();
+                } catch (IOException ex) {
+                    Logger.getLogger(ServerClient.class.getName()).log(Level.SEVERE, null, ex);
+                } finally {
+                    closeSocket();
                 }
             }
-        } catch (IOException ex) {
-            Logger.getLogger(ServerClient.class.getName()).log(Level.SEVERE, null, ex);
-        } finally {
-            closeSocket();
         }
+        ).start();
     }
 
-    private void introduceMyself() throws IOException {
-        this.outputStream = new ObjectOutputStream(socket.getOutputStream());
-        String greeting = "Hello!, I'm the server. Your id client is: " + clientId;
-        this.outputStream.writeUTF(greeting);
-        this.outputStream.flush();
-        System.out.println("Me: " + greeting);
+    private void sendIdClient() throws IOException {
+        socketController.send(new CommandSetupClientId(getId()));
     }
 
-    private void waitForResponse() throws IOException {
-        this.inputStream = new ObjectInputStream(socket.getInputStream());
-        String response = inputStream.readUTF();
-        System.out.println("Client: " + response);
-    }
-
-    private void closeSocket() {
-        try {
-            if (outputStream != null) {
-                outputStream.close();
-            }
-            if (inputStream != null) {
-                inputStream.close();
-            }
-            if (socket != null) {
-                socket.close();
-            }
-        } catch (IOException ex) {
-            Logger.getLogger(ServerClient.class.getName()).log(Level.SEVERE, null, ex);
-        }
-    }
-
-    private void sendIdClient() {
-        sendJson("{command:'id_client', id_client:" + clientId + "}");
-        player = new Player(clientId);
-    }
-
-    public void sendJson(String json) {
-        try {
-            this.outputStream.writeUTF(json);
-            this.outputStream.flush();
-        } catch (IOException ex) {
-            Logger.getLogger(ServerClient.class.getName()).log(Level.SEVERE, null, ex);
-        }
-    }
-
-    private void setupPlayer() {
-        //create player
-        player = new Player(clientId);
+    private void setupPlayer() throws IOException {
         //seek an empty room and select a begining tile for the player
-        Room chosenRoom = map.getRoomForPlayer();
+        Room chosenRoom = Server.getInstance().getMap().getRoomForPlayer();
         Tile emptyTile = chosenRoom.getEmptyTile();
-        String source = chosenRoom.getJsonString();
         //others in the room
         ArrayList<Player> others = chosenRoom.getPlayers();
-        String playersString = "[";
-        for (int i = 0; i < others.size(); i++) {
-            Player otherPlayer = others.get(i);
-            playersString += "{id: " + otherPlayer.getId() + ", position:{x:" + otherPlayer.getPosition().x + ",y:" + otherPlayer.getPosition().y + "}}";
-            if (i != others.size() - 1) {
-                playersString += ",";
-            }
-        }
-        playersString += "]";
         //set x and y positions for player, also give him the room as reference
         chosenRoom.addObject(player, emptyTile.getTileX(), emptyTile.getTileY());
-        String toSend = "{command:'init', "
-                + "id_room:" + chosenRoom.getRoomId() + ", "
-                + "room_source: \"" + source + "\", tile: {x: " + emptyTile.getTileX() + ", y: " + emptyTile.getTileY() + "},"
-                + "room_players:" + playersString + " }";
-        sendJson(toSend);
-
+        send(new CommandInitPlayer(chosenRoom.getRoomId(), chosenRoom.getJsonString(), emptyTile.getTileX(), emptyTile.getTileY(), others));
     }
 
-    public int getIdClient() {
-        return clientId;
+    public void send(Command command) throws IOException {
+        socketController.send(command);
     }
 
-    public void sendPlayerInfo(int clientId, Player player) {
+    public void sendPlayerInfo(Player player) throws IOException {
         Tile tile = player.getRoom().getCurrentTile(player);
-        sendJson("{command:'new_player',client_id:" + clientId + ",tile: {x:'+" + tile.getTileX() + "',y:'+" + tile.getTileY() + "'}, room_id: " + player.getRoom().getRoomId() + "}");
+        this.send(new CommandNewPlayer(player.getId(), tile.getTileX(), tile.getTileY(), player.getRoom().getRoomId()));
     }
 
     public Player getPlayer() {
         return player;
     }
 
+    public int getId() {
+        return player.getId();
+    }
+
+    private ServerClient getMe() {
+        return this;
+    }
+
     private void disconnect() {
         connected = false;
         closeSocket();
-        Server.getInstance().removeClient(clientId);
+        Server.getInstance().removeClient(getId());
     }
 
+    @Override
+    public boolean equals(Object obj) {
+        return ((ServerClient) obj).getId() == getId();
+    }
+
+    private void closeSocket() {
+        try {
+            socketController.close();
+        } catch (IOException ex) {
+            Logger.getLogger(ServerClient.class
+                    .getName()).log(Level.SEVERE, null, ex);
+        }
+    }
 }

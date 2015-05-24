@@ -7,9 +7,9 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import mfthserver.ServerClient;
 import mfthserver.map.Map;
 import mfthserver.player.Player;
+import mfthserver.server.commands.Command;
 
 /**
  *
@@ -18,13 +18,14 @@ import mfthserver.player.Player;
 public class Server {
 
     public static final int DEFAULT_PORT = 4646;
+    //
     private static Server me;
     private int port;
     private ServerSocket socket;
     private ArrayList<ServerClient> clients;
     //
     private Map map;
-    private static int playersCount;//gives the next id, withour reuing old ones
+    private static int playersCount;//gives the next id, without reuing old ones
 
     public static Server getInstance() {
         if (me == null) {
@@ -51,7 +52,7 @@ public class Server {
                 ServerClient newClient = new ServerClient(incomingSocket, Server.playersCount);
                 Server.playersCount = Server.playersCount + 1;
                 clients.add(newClient);
-                new Thread(newClient).start();
+                newClient.start();
             }
         } catch (IOException ex) {
             Logger.getLogger(Server.class.getName()).log(Level.SEVERE, null, ex);
@@ -74,54 +75,40 @@ public class Server {
         Iterator<ServerClient> iterator = clients.iterator();
         while (iterator.hasNext()) {
             ServerClient current = iterator.next();
-            if (current.getIdClient() == id) {
+            if (current.getId() == id) {
                 return current;
             }
         }
         return null;
     }
 
-    public void sendPlayerInfo(int clientId, Player player) {
+    public void sendPlayerInfo(Player player) throws IOException {
         Iterator<ServerClient> iterator = clients.iterator();
         while (iterator.hasNext()) {
             ServerClient current = iterator.next();
-            if (current.getIdClient() != clientId && current.getPlayer().getRoom().equals(player.getRoom())) {
-                current.sendPlayerInfo(clientId, player);
+            if (current.getId() != player.getId() && current.getPlayer().getRoom().equals(player.getRoom())) {
+                current.sendPlayerInfo(player);
             }
         }
     }
 
-    public void sendJsonToAll(String json) {
-        //tamb se lo manda al que envio
+    public void sendToAll(Command command) throws IOException {
         for (int i = 0; i < clients.size(); i++) {
-            clients.get(i).sendJson(json);
+            clients.get(i).send(command);
         }
-        /*
-         Iterator<ServerClient> iterator = clients.iterator();
-         while (iterator.hasNext()) {
-         ServerClient current = iterator.next();
-         current.sendJson(json);
-         }*/
     }
 
-    public void sendJsonToAll(String json, int except) {
-        //tamb se lo manda al que envio
+    public void sendToAllExceptMe(Command command, ServerClient except) throws IOException {
         for (int i = 0; i < clients.size(); i++) {
-            if (clients.get(i).getIdClient() != except) {
-                clients.get(i).sendJson(json);
+            if (!clients.get(i).equals(except)) {
+                clients.get(i).send(command);
             }
         }
-        /*
-         Iterator<ServerClient> iterator = clients.iterator();
-         while (iterator.hasNext()) {
-         ServerClient current = iterator.next();
-         current.sendJson(json);
-         }*/
     }
 
     public void removeClient(int clientId) {
         for (int i = 0; i < clients.size(); i++) {
-            if (clients.get(i).getIdClient() == clientId) {
+            if (clients.get(i).getId() == clientId) {
                 System.out.println("CLIENT " + clientId + " 'S JUST DISCONNECTED FROM SERVER");
                 clients.remove(clients.get(i));
             }
