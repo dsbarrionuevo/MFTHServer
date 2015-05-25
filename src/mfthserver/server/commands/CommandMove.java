@@ -6,7 +6,7 @@ import org.json.JSONObject;
  *
  * @author Barrionuevo Diego
  */
-public class CommandMove extends Command {
+public class CommandMove extends Command implements Identificable{
 
     private int clientId;
     private int direction;
@@ -34,6 +34,7 @@ public class CommandMove extends Command {
         return result;
     }
 
+    @Override
     public int getClientId() {
         return clientId;
     }

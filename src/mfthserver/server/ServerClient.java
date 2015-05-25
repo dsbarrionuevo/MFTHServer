@@ -2,7 +2,10 @@ package mfthserver.server;
 
 import mfthserver.server.commands.*;
 import java.io.IOException;
+import java.net.DatagramSocket;
 import java.net.Socket;
+import java.net.SocketException;
+import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -24,9 +27,9 @@ public class ServerClient {
     //
     private Player player;
 
-    public ServerClient(Socket socket, int clientId) {
+    public ServerClient(Socket socket, DatagramSocket datagramSocket, int clientId) throws SocketException, UnknownHostException {
         this.socketController = new SocketController(socket);
-        //this.datagramController = new DatagramController(null, null, idClient);
+        this.datagramController = new DatagramController(datagramSocket);
         this.connected = true;
         this.player = new Player(clientId);
     }
@@ -52,25 +55,18 @@ public class ServerClient {
                     while (connected) {
                         Command command = socketController.receive();
                         switch (command.getType()) {
-                            case (COMMAND_MOVE):
-                                boolean canMove = player.move(((CommandMove) command).getDirection());
-                                //el server debe actualizar la posicion y mandarsela al cliente
-                                send(new CommandMoveResponse(getId(), canMove, player.getPosition()));
-                                //ahora, el server le tiene que mandar a todos el movimiento que ocurrio en la sala de este jugador
-                                //considerar si se debe mandar al que envio tamb...
-                                //Server.getInstance().sendJsonToAll("{command:'response_move', client_id: " + player.getId() + ", can_move:" + canMove + ", position: {x:" + player.getPosition().x + ", y:" + player.getPosition().y + "}}");
-                                Server.getInstance().sendToAllExceptMe(new CommandMoveResponse(getId(), canMove, player.getPosition()), getMe());
+                            case (COMMAND_NETWORK_INFORMATION):
+                                CommandNetworkInformation commandNetworkInformation = (CommandNetworkInformation) command;
+                                datagramController.setReceptorAddress(socketController.getSocket().getInetAddress());
+                                datagramController.setReceptorPort(commandNetworkInformation.getListenPortUDP());
                                 break;
                             case (COMMAND_DISCONNECT):
                                 CommandDisconnect disconnectCommand = (CommandDisconnect) command;
-                                //"{command: 'disconnect', client_id: "+clientId+", room_id: "+room.getRoomId()+"}"
                                 Room roomWherePlayerStayed = Server.getInstance().getMap().findRoomById(disconnectCommand.getRoomId());
                                 if (roomWherePlayerStayed != null) {
                                     roomWherePlayerStayed.removeObject(roomWherePlayerStayed.getPlayerById(disconnectCommand.getClientId()));
                                 }
-                                //esto es para que le borre de la sala de los otros jugadores, el jugador que se acaba de desconectar
-                                //Server.getInstance().sendJsonToAll("{command:'player_disconnected', client_id: " + clientId + ", room_id: " + roomId + "}", clientId);
-                                Server.getInstance().sendToAll(new CommandDisconnectResponse(disconnectCommand.getClientId(), disconnectCommand.getRoomId()));
+                                Server.getInstance().sendPacketToAllExceptMe(new CommandDisconnectResponse(disconnectCommand.getClientId(), disconnectCommand.getRoomId()), getMe());
                                 disconnect();
                                 break;
                         }
@@ -83,6 +79,24 @@ public class ServerClient {
             }
         }
         ).start();
+        //UDP listen thread here... instead use receiveDatagram
+    }
+
+    public void receiveDatagram(Identificable identificable) {
+        try {
+            Command command = (Command) identificable;
+            switch (command.getType()) {
+                case (COMMAND_MOVE):
+                    boolean canMove = player.move(((CommandMove) command).getDirection());
+                    if (canMove) {
+                        sendDatagram(new CommandMoveResponse(getId(), canMove, player.getPosition()));
+                        Server.getInstance().sendDatagramToAllExceptMe(new CommandMoveResponse(getId(), canMove, player.getPosition()), getMe());
+                    }
+                    break;
+            }
+        } catch (IOException ex) {
+            Logger.getLogger(ServerClient.class.getName()).log(Level.SEVERE, null, ex);
+        }
     }
 
     private void sendIdClient() throws IOException {
@@ -97,16 +111,22 @@ public class ServerClient {
         ArrayList<Player> others = chosenRoom.getPlayers();
         //set x and y positions for player, also give him the room as reference
         chosenRoom.addObject(player, emptyTile.getTileX(), emptyTile.getTileY());
-        send(new CommandInitPlayer(chosenRoom.getRoomId(), chosenRoom.getJsonString(), emptyTile.getTileX(), emptyTile.getTileY(), others));
+        sendPacket(new CommandInitPlayer(chosenRoom.getRoomId(), chosenRoom.getJsonString(), emptyTile.getTileX(), emptyTile.getTileY(), others));
     }
 
-    public void send(Command command) throws IOException {
+    public void sendPacket(Command command) throws IOException {
         socketController.send(command);
+    }
+
+    public void sendDatagram(Command command) throws IOException {
+        if (datagramController.isReady()) {
+            datagramController.send(command);
+        }
     }
 
     public void sendPlayerInfo(Player player) throws IOException {
         Tile tile = player.getRoom().getCurrentTile(player);
-        this.send(new CommandNewPlayer(player.getId(), tile.getTileX(), tile.getTileY(), player.getRoom().getRoomId()));
+        this.sendPacket(new CommandNewPlayer(player.getId(), tile.getTileX(), tile.getTileY(), player.getRoom().getRoomId()));
     }
 
     public Player getPlayer() {

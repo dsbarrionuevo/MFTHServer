@@ -83,4 +83,8 @@ public class SocketController extends CommunicationController {
         }
     }
 
+    public Socket getSocket() {
+        return socket;
+    }
+
 }

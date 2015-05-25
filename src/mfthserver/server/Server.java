@@ -1,6 +1,8 @@
 package mfthserver.server;
 
 import java.io.IOException;
+import java.net.DatagramSocket;
+import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
@@ -21,7 +23,9 @@ public class Server {
     //
     private static Server me;
     private int port;
-    private ServerSocket socket;
+    private ServerSocket serverSocket;
+    private DatagramSocket datagramSocket;
+    private DatagramBroker datagramBroker;
     private ArrayList<ServerClient> clients;
     //
     private Map map;
@@ -42,14 +46,17 @@ public class Server {
 
     public void start() {
         try {
-            socket = new ServerSocket(port);
+            serverSocket = new ServerSocket(port);
+            datagramSocket = new DatagramSocket(port, InetAddress.getByName("localhost"));
+            datagramBroker = new DatagramBroker(datagramSocket);
+            datagramBroker.listen();
             //1. Crea el mapa a partir del map.json.
             createMap();
             System.out.println("Map created!");
             //2. Entra en loop escuchando clientes:
             while (true) {
-                Socket incomingSocket = socket.accept();
-                ServerClient newClient = new ServerClient(incomingSocket, Server.playersCount);
+                Socket incomingSocket = serverSocket.accept();
+                ServerClient newClient = new ServerClient(incomingSocket, datagramSocket, Server.playersCount);
                 Server.playersCount = Server.playersCount + 1;
                 clients.add(newClient);
                 newClient.start();
@@ -92,16 +99,30 @@ public class Server {
         }
     }
 
-    public void sendToAll(Command command) throws IOException {
+    public void sendPacketToAll(Command command) throws IOException {
         for (int i = 0; i < clients.size(); i++) {
-            clients.get(i).send(command);
+            clients.get(i).sendPacket(command);
         }
     }
 
-    public void sendToAllExceptMe(Command command, ServerClient except) throws IOException {
+    public void sendPacketToAllExceptMe(Command command, ServerClient except) throws IOException {
         for (int i = 0; i < clients.size(); i++) {
             if (!clients.get(i).equals(except)) {
-                clients.get(i).send(command);
+                clients.get(i).sendPacket(command);
+            }
+        }
+    }
+
+    public void sendDatagramToAll(Command command) throws IOException {
+        for (int i = 0; i < clients.size(); i++) {
+            clients.get(i).sendDatagram(command);
+        }
+    }
+
+    public void sendDatagramToAllExceptMe(Command command, ServerClient except) throws IOException {
+        for (int i = 0; i < clients.size(); i++) {
+            if (!clients.get(i).equals(except)) {
+                clients.get(i).sendDatagram(command);
             }
         }
     }

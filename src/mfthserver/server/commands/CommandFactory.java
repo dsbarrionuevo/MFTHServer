@@ -16,6 +16,7 @@ public class CommandFactory extends CommandFactoryMethod {
     public static final int COMMAND_MOVE_REPSONSE = 5;
     public static final int COMMAND_DISCONNECT = 4;
     public static final int COMMAND_DISCONNECT_RESPONSE = 6;
+    public static final int COMMAND_NETWORK_INFORMATION = 7;
     //
     public static CommandFactory me;
 
@@ -56,6 +57,9 @@ public class CommandFactory extends CommandFactoryMethod {
                 break;
             case (COMMAND_DISCONNECT_RESPONSE):
                 result = new CommandDisconnectResponse();
+                break;
+            case (COMMAND_NETWORK_INFORMATION):
+                result = new CommandNetworkInformation();
                 break;
             case (COMMAND_INVALID):
             default:
